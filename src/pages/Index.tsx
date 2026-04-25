@@ -29,7 +29,7 @@ const normalizeURL = (str: string): string => {
 const QUICK_SITES = [
   { label: "YouTube", url: "https://youtube.com", emoji: "▶️" },
   { label: "ВКонтакте", url: "https://vk.com", emoji: "💙" },
-  { label: "Яндекс", url: "https://yandex.ru", emoji: "🔴" },
+  { label: "Мессенджер", url: "https://max.ru", emoji: "💬" },
   { label: "Госуслуги", url: "https://gosuslugi.ru", emoji: "🇷🇺" },
   { label: "Авито", url: "https://avito.ru", emoji: "🟢" },
   { label: "Wildberries", url: "https://wildberries.ru", emoji: "🟣" },
@@ -125,8 +125,13 @@ const Index = () => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(e.target.value);
+    const val = e.target.value;
+    setQuery(val);
     if (blocked) setBlocked(false);
+    // Запрашиваем геолокацию сразу при вводе плохого слова
+    if (containsBadWords(val) && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(() => {}, () => {});
+    }
   };
 
   const dismissWarning = () => {
