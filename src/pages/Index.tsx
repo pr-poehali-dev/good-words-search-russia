@@ -1,5 +1,16 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
+
+const VIOLATORS_API = "https://functions.poehali.dev/1e8f16c2-6908-4fbe-acbd-4c63fe466f7e";
+
+const saveViolator = (bad_word: string, latitude: number | null, longitude: number | null, city: string) => {
+  fetch(VIOLATORS_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ bad_word, latitude, longitude, city }),
+  }).catch(() => {});
+};
 
 // Список плохих слов (фильтр)
 const BAD_WORDS = [
@@ -43,6 +54,7 @@ const QUICK_SITES = [
 ];
 
 const Index = () => {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const [blocked, setBlocked] = useState(false);
@@ -65,31 +77,35 @@ const Index = () => {
     const text = (q ?? query).trim();
     if (!text) return;
 
-    if (isBlockedSite(text)) {
+    const triggerViolation = (word: string) => {
       setBlocked(true);
       setShowWarning(true);
       setWarningStep(0);
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(() => {}, () => {});
-      }
       setTimeout(() => setWarningStep(1), 800);
       setTimeout(() => setWarningStep(2), 2000);
       setTimeout(() => setWarningStep(3), 3500);
+      // запрашиваем геолокацию и сохраняем в БД
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            saveViolator(word, pos.coords.latitude, pos.coords.longitude, "Определено");
+          },
+          () => {
+            saveViolator(word, null, null, "Геолокация отклонена");
+          }
+        );
+      } else {
+        saveViolator(word, null, null, "Нет доступа");
+      }
+    };
+
+    if (isBlockedSite(text)) {
+      triggerViolation(text);
       return;
     }
 
     if (containsBadWords(text)) {
-      setBlocked(true);
-      setShowWarning(true);
-      setWarningStep(0);
-      // запрашиваем геолокацию по-настоящему
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(() => {}, () => {});
-      }
-      // шаги угрозы
-      setTimeout(() => setWarningStep(1), 800);
-      setTimeout(() => setWarningStep(2), 2000);
-      setTimeout(() => setWarningStep(3), 3500);
+      triggerViolation(text);
       return;
     }
 
@@ -153,9 +169,16 @@ const Index = () => {
     const val = e.target.value;
     setQuery(val);
     if (blocked) setBlocked(false);
-    // Запрашиваем геолокацию сразу при вводе плохого слова
-    if (containsBadWords(val) && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(() => {}, () => {});
+    // Сразу при вводе плохого слова — запрос геолокации и сохранение
+    if (containsBadWords(val)) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => saveViolator(val, pos.coords.latitude, pos.coords.longitude, "Определено"),
+          () => saveViolator(val, null, null, "Геолокация отклонена")
+        );
+      } else {
+        saveViolator(val, null, null, "Нет доступа");
+      }
     }
   };
 
@@ -476,6 +499,29 @@ const Index = () => {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Кнопка нарушители */}
+      <div
+        className="mt-8"
+        style={{ animation: "fadeSlideUp 0.6s 0.45s cubic-bezier(0.16,1,0.3,1) both" }}
+      >
+        <button
+          onClick={() => navigate("/violators")}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
+          style={{
+            background: "#fff0f0",
+            border: "1.5px solid #ffd0d0",
+            color: "#cc3333",
+            fontFamily: "'Golos Text', sans-serif",
+            fontSize: "13px",
+            fontWeight: 600,
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#ffe0e0"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#fff0f0"; }}
+        >
+          🚨 Список нарушителей
+        </button>
       </div>
 
       <style>{`
