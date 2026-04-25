@@ -501,9 +501,9 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Кнопка нарушители */}
+      {/* Кнопки внизу */}
       <div
-        className="mt-8"
+        className="mt-8 flex items-center gap-3 flex-wrap justify-center"
         style={{ animation: "fadeSlideUp 0.6s 0.45s cubic-bezier(0.16,1,0.3,1) both" }}
       >
         <button
@@ -521,6 +521,24 @@ const Index = () => {
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#fff0f0"; }}
         >
           🚨 Список нарушителей
+        </button>
+
+        <button
+          onClick={() => navigate("/admin")}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
+          style={{
+            background: "#f5f3ff",
+            border: "1.5px solid #ddd6fe",
+            color: "#7c3aed",
+            fontFamily: "'Golos Text', sans-serif",
+            fontSize: "13px",
+            fontWeight: 600,
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#ede9fe"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#f5f3ff"; }}
+        >
+          <Icon name="LogIn" size={14} />
+          Войти
         </button>
       </div>
 
