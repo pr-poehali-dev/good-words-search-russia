@@ -39,6 +39,8 @@ const Index = () => {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
+  const [warningStep, setWarningStep] = useState(0);
   const [listening, setListening] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<{ stop: () => void } | null>(null);
@@ -53,7 +55,16 @@ const Index = () => {
 
     if (containsBadWords(text)) {
       setBlocked(true);
-      setTimeout(() => setBlocked(false), 2500);
+      setShowWarning(true);
+      setWarningStep(0);
+      // запрашиваем геолокацию по-настоящему
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(() => {}, () => {});
+      }
+      // шаги угрозы
+      setTimeout(() => setWarningStep(1), 800);
+      setTimeout(() => setWarningStep(2), 2000);
+      setTimeout(() => setWarningStep(3), 3500);
       return;
     }
 
@@ -118,8 +129,105 @@ const Index = () => {
     if (blocked) setBlocked(false);
   };
 
+  const dismissWarning = () => {
+    setShowWarning(false);
+    setBlocked(false);
+    setWarningStep(0);
+    setQuery("");
+  };
+
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 pb-10">
+
+      {/* ПРЕДУПРЕЖДЕНИЕ при плохих словах */}
+      {showWarning && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: "rgba(0,0,0,0.85)", animation: "fadeIn 0.2s both" }}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl overflow-hidden"
+            style={{
+              background: "#0d0d0d",
+              border: "1.5px solid #ff3b3b",
+              boxShadow: "0 0 60px rgba(255,50,50,0.3)",
+              animation: "scaleIn 0.25s cubic-bezier(0.16,1,0.3,1) both",
+            }}
+          >
+            {/* Заголовок */}
+            <div
+              className="px-6 pt-6 pb-4 text-center"
+              style={{ borderBottom: "1px solid #1e1e1e" }}
+            >
+              <div className="text-4xl mb-3" style={{ animation: warningStep >= 0 ? "pulse 0.6s infinite" : "none" }}>
+                🚨
+              </div>
+              <p className="text-red-400 font-bold text-lg" style={{ fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
+                НАРУШЕНИЕ ОБНАРУЖЕНО
+              </p>
+            </div>
+
+            {/* Шаги */}
+            <div className="px-6 py-5 space-y-3">
+              <div
+                className="flex items-start gap-3 transition-all duration-500"
+                style={{ opacity: warningStep >= 0 ? 1 : 0, transform: warningStep >= 0 ? "translateX(0)" : "translateX(-10px)" }}
+              >
+                <span className="text-xl mt-0.5">📍</span>
+                <div>
+                  <p className="text-white text-sm font-semibold" style={{ fontFamily: "'Golos Text', sans-serif" }}>
+                    Запрос геолокации отправлен
+                  </p>
+                  <p className="text-gray-500 text-xs mt-0.5">Ваше местоположение определяется...</p>
+                </div>
+              </div>
+
+              <div
+                className="flex items-start gap-3 transition-all duration-500"
+                style={{ opacity: warningStep >= 1 ? 1 : 0, transform: warningStep >= 1 ? "translateX(0)" : "translateX(-10px)" }}
+              >
+                <span className="text-xl mt-0.5">👁️</span>
+                <div>
+                  <p className="text-white text-sm font-semibold" style={{ fontFamily: "'Golos Text', sans-serif" }}>
+                    За вами ведётся наблюдение
+                  </p>
+                  <p className="text-gray-500 text-xs mt-0.5">Данные передаются администратору...</p>
+                </div>
+              </div>
+
+              <div
+                className="flex items-start gap-3 transition-all duration-500"
+                style={{ opacity: warningStep >= 2 ? 1 : 0, transform: warningStep >= 2 ? "translateX(0)" : "translateX(-10px)" }}
+              >
+                <span className="text-xl mt-0.5">⚙️</span>
+                <div>
+                  <p className="text-white text-sm font-semibold" style={{ fontFamily: "'Golos Text', sans-serif" }}>
+                    Добавлен в список нарушителей
+                  </p>
+                  <p className="text-gray-500 text-xs mt-0.5">Информация занесена в базу данных...</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Кнопка */}
+            <div className="px-6 pb-6">
+              <button
+                onClick={dismissWarning}
+                className="w-full py-3 rounded-2xl font-bold text-sm transition-all duration-200 active:scale-95"
+                style={{
+                  background: warningStep >= 3 ? "#ff3b3b" : "#1e1e1e",
+                  color: warningStep >= 3 ? "#fff" : "#555",
+                  fontFamily: "'Golos Text', sans-serif",
+                  cursor: warningStep >= 3 ? "pointer" : "not-allowed",
+                  transition: "all 0.5s",
+                }}
+              >
+                {warningStep >= 3 ? "Я всё понял, буду вежливым" : "Подождите..."}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Logo */}
       <div
         className="mb-14 select-none"
@@ -331,6 +439,18 @@ const Index = () => {
           40%      { transform: translateX(6px); }
           60%      { transform: translateX(-4px); }
           80%      { transform: translateX(4px); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.88); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes pulse {
+          0%,100% { transform: scale(1); }
+          50%      { transform: scale(1.2); }
         }
       `}</style>
     </div>
