@@ -6,6 +6,13 @@ const BAD_WORDS = [
   "убий","убить","смерть","умри","ненавижу","дурак","идиот","тупой","придурок",
   "stupid","kill","hate","die","dead","murder","shit","fuck","ass","damn","bitch",
   "сука","блять","блядь","хуй","пизда","ебать","ёбаный","пидор","мразь","урод",
+  "говно","дерьмо","козёл","козел","шлюха","лох","лошара","чмо","быдло","скотина",
+];
+
+// Запрещённые сайты
+const BLOCKED_SITES = [
+  "tiktok.com","tiktok","тикток",
+  "google.com","google","гугл",
 ];
 
 const containsBadWords = (text: string): boolean => {
@@ -27,12 +34,12 @@ const normalizeURL = (str: string): string => {
 };
 
 const QUICK_SITES = [
-  { label: "YouTube", url: "https://youtube.com", emoji: "▶️" },
-  { label: "ВКонтакте", url: "https://vk.com", emoji: "💙" },
-  { label: "Мессенджер", url: "https://max.ru", emoji: "💬" },
-  { label: "Госуслуги", url: "https://gosuslugi.ru", emoji: "🇷🇺" },
-  { label: "Авито", url: "https://avito.ru", emoji: "🟢" },
-  { label: "Wildberries", url: "https://wildberries.ru", emoji: "🟣" },
+  { label: "YouTube", url: "https://youtube.com", emoji: "▶️", blocked: false },
+  { label: "ВКонтакте", url: "https://vk.com", emoji: "💙", blocked: false },
+  { label: "Мессенджер", url: "https://max.ru", emoji: "💬", blocked: false },
+  { label: "Госуслуги", url: "https://gosuslugi.ru", emoji: "🇷🇺", blocked: false },
+  { label: "TikTok", url: "https://tiktok.com", emoji: "🎵", blocked: true },
+  { label: "Google", url: "https://google.com", emoji: "🔍", blocked: true },
 ];
 
 const Index = () => {
@@ -49,9 +56,27 @@ const Index = () => {
     setTimeout(() => inputRef.current?.focus(), 300);
   }, []);
 
+  const isBlockedSite = (text: string): boolean => {
+    const lower = text.toLowerCase();
+    return BLOCKED_SITES.some((s) => lower.includes(s));
+  };
+
   const handleSearch = (q?: string) => {
     const text = (q ?? query).trim();
     if (!text) return;
+
+    if (isBlockedSite(text)) {
+      setBlocked(true);
+      setShowWarning(true);
+      setWarningStep(0);
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(() => {}, () => {});
+      }
+      setTimeout(() => setWarningStep(1), 800);
+      setTimeout(() => setWarningStep(2), 2000);
+      setTimeout(() => setWarningStep(3), 3500);
+      return;
+    }
 
     if (containsBadWords(text)) {
       setBlocked(true);
@@ -400,28 +425,54 @@ const Index = () => {
           {QUICK_SITES.map((site) => (
             <button
               key={site.url}
-              onClick={() => window.open(site.url, "_blank", "noopener,noreferrer")}
-              className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl transition-all duration-200 hover:scale-105 active:scale-95"
+              onClick={() => {
+                if (site.blocked) {
+                  setBlocked(true);
+                  setShowWarning(true);
+                  setWarningStep(0);
+                  if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(() => {}, () => {});
+                  }
+                  setTimeout(() => setWarningStep(1), 800);
+                  setTimeout(() => setWarningStep(2), 2000);
+                  setTimeout(() => setWarningStep(3), 3500);
+                } else {
+                  window.open(site.url, "_blank", "noopener,noreferrer");
+                }
+              }}
+              className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl transition-all duration-200 active:scale-95"
               style={{
-                background: "#f7f7f7",
-                border: "1.5px solid #efefef",
+                background: site.blocked ? "#f5f5f5" : "#f7f7f7",
+                border: `1.5px solid ${site.blocked ? "#e0e0e0" : "#efefef"}`,
+                opacity: site.blocked ? 0.6 : 1,
+                cursor: site.blocked ? "not-allowed" : "pointer",
+                position: "relative",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.background = "#f0f0ff";
-                (e.currentTarget as HTMLElement).style.borderColor = "#d0c8ff";
+                if (!site.blocked) {
+                  (e.currentTarget as HTMLElement).style.background = "#f0f0ff";
+                  (e.currentTarget as HTMLElement).style.borderColor = "#d0c8ff";
+                }
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = "#f7f7f7";
-                (e.currentTarget as HTMLElement).style.borderColor = "#efefef";
+                if (!site.blocked) {
+                  (e.currentTarget as HTMLElement).style.background = "#f7f7f7";
+                  (e.currentTarget as HTMLElement).style.borderColor = "#efefef";
+                }
               }}
             >
-              <span style={{ fontSize: "1.6rem", lineHeight: 1 }}>{site.emoji}</span>
+              <span style={{ fontSize: "1.6rem", lineHeight: 1, filter: site.blocked ? "grayscale(1)" : "none" }}>
+                {site.emoji}
+              </span>
               <span
-                className="text-xs text-gray-500 font-medium"
-                style={{ fontFamily: "'Golos Text', sans-serif" }}
+                className="text-xs font-medium"
+                style={{ fontFamily: "'Golos Text', sans-serif", color: site.blocked ? "#bbb" : "#6b7280" }}
               >
                 {site.label}
               </span>
+              {site.blocked && (
+                <span style={{ fontSize: "0.6rem", color: "#d0d0d0", marginTop: "-4px" }}>🔒 заблокирован</span>
+              )}
             </button>
           ))}
         </div>
